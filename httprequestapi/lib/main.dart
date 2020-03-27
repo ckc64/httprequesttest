@@ -4,18 +4,22 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:httprequestapi/ConfirmedCases.dart';
+import 'package:httprequestapi/LockdownCities.dart';
+import 'package:httprequestapi/LockedDownCitiesPage.dart';
 import 'package:httprequestapi/Services.dart';
+
+import 'Debouncer.dart';
 
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        brightness: Brightness.light,
+        brightness: Brightness.dark,
     primaryColor: Colors.red,
       ),
       darkTheme: ThemeData(
@@ -114,6 +118,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
      // TODO: implement initState
     super.initState();
+    
    dropDownMenuGenderItems = buildDropdownGenderMenuItems(genders);
    _selectedGender = dropDownMenuGenderItems[0].value;
    
@@ -121,10 +126,11 @@ class _MyHomePageState extends State<MyHomePage> {
    _selectedMonth = dropDownMenuMonthsItems[0].value;
    dropDownMenuStatusItems= buildDropdownStatusMenuItems(status);
    _selectedStatus = dropDownMenuStatusItems[0].value;
-   Services.getConfirmedCases().then((confirmedCasesFromServer){
+   ServicesConfirmedCases.getConfirmedCases().then((confirmedCasesFromServer){
      setState(() {
        confirmedCases = confirmedCasesFromServer;
        filteredConfirmedCases = confirmedCases;
+       
      });
    });
   }
@@ -165,7 +171,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       return items;
   }
-  String genderRole;
+  String genderRole="";
   onChangeDropdownGenderItem(Gender selectedGender){
     setState(() {
       _selectedGender = selectedGender;
@@ -178,14 +184,68 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     });
   }
+  String statusRole="";
     onChangeDropdownStatusItem(Status selectedStatus){
     setState(() {
       _selectedStatus = selectedStatus;
+      if(_selectedStatus.name == "Recovered"){
+          statusRole = "Recovered";
+      }else if(_selectedStatus.name == "Admitted"){
+        statusRole = "Admitted";
+      }else if(_selectedStatus.name == "Died"){
+        statusRole = "Died";
+      }else{
+        statusRole = "";
+      }
     });
   }
+
+  String monthsRole="";
     onChangeDropdownMonthsItem(Months selectedMonths){
     setState(() {
       _selectedMonth = selectedMonths;
+      
+      switch(_selectedMonth.name){
+        case "Jan":
+          monthsRole = "1";
+          break;
+        case "Feb":
+          monthsRole = "2";
+          break;
+        case "Mar":
+          monthsRole = "3";
+          break;
+        case "Apr":
+          monthsRole = "4";
+          break;
+        case "May":
+          monthsRole = "5";
+          break;
+        case "Jun":
+          monthsRole = "6";
+          break;
+        case "Jul":
+          monthsRole = "7";
+          break;
+        case "Aug":
+          monthsRole = "8";
+          break;
+        case "Sept":
+          monthsRole = "9";
+          break;
+        case "Oct":
+          monthsRole = "10";
+          break;
+        case "Nov":
+          monthsRole = "11";
+          break;
+        case "Dec":
+          monthsRole = "12";
+          break;
+        default:
+          monthsRole = "";
+          break;
+      }
     });
   }
 
@@ -196,6 +256,12 @@ class _MyHomePageState extends State<MyHomePage> {
       
       appBar: AppBar(
         title: Text(widget.title),
+        actions: <Widget>[
+          IconButton(
+            onPressed: ()=>Navigator.push(context, MaterialPageRoute(builder: (context)=>LockedDownCitiesPage())),
+            icon: Icon(Icons.ac_unit),
+          )
+        ],
       ),
       body:Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,24 +275,29 @@ class _MyHomePageState extends State<MyHomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[
                     Container(
+                      
                       padding: EdgeInsets.all(10),
                       child:    DropdownButton(
                         
                       value: _selectedGender,
                       items: dropDownMenuGenderItems,
                       onChanged: (string){
+                       
                         onChangeDropdownGenderItem(string);
                         
                           setState(() {
                             filteredConfirmedCases = confirmedCases.where((u)=>
-                            (u.gender.toLowerCase().contains(genderRole.toLowerCase()))).toList();
-                            
+                            (u.gender.toLowerCase().contains(genderRole.toLowerCase()))
+                            && (u.status.toLowerCase().contains(statusRole.toLowerCase()))
+                            &&  (u.dateConF.toLowerCase().split("-")[1].contains(monthsRole.toLowerCase()))
+                            ).toList();
                           });
+
                       },
                       
                     ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.green[600],
                         borderRadius: BorderRadius.all(Radius.circular(10))
                       ),
                     ),
@@ -237,10 +308,20 @@ class _MyHomePageState extends State<MyHomePage> {
                         
                         value: _selectedMonth,
                         items: dropDownMenuMonthsItems,
-                        onChanged: onChangeDropdownMonthsItem,
+                        onChanged: (string){
+                            onChangeDropdownMonthsItem(string);
+                           
+                              setState(() {
+                            filteredConfirmedCases = confirmedCases.where((u)=>
+                            (u.gender.toLowerCase().contains(genderRole.toLowerCase()))
+                            && (u.status.toLowerCase().contains(statusRole.toLowerCase()))
+                            &&  (u.dateConF.toLowerCase().split("-")[1].contains(monthsRole.toLowerCase()))
+                            ).toList();
+                          });
+                        },
                     ),
                     decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.green[600],
                         borderRadius: BorderRadius.all(Radius.circular(10))
                       ),
                      ),
@@ -250,10 +331,19 @@ class _MyHomePageState extends State<MyHomePage> {
                       
                       value: _selectedStatus,
                       items: dropDownMenuStatusItems,
-                      onChanged: onChangeDropdownStatusItem,
+                      onChanged: (string){
+                          onChangeDropdownStatusItem(string);
+                          setState(() {
+                            filteredConfirmedCases = confirmedCases.where((u)=>
+                            (u.gender.toLowerCase().contains(genderRole.toLowerCase()))
+                            && (u.status.toLowerCase().contains(statusRole.toLowerCase()))
+                            &&  (u.dateConF.toLowerCase().split("-")[1].contains(monthsRole.toLowerCase()))
+                            ).toList();
+                          });
+                      }
                     ),
                     decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Colors.green[600],
                         borderRadius: BorderRadius.all(Radius.circular(10))
                       ),
                        ),
@@ -276,9 +366,30 @@ class _MyHomePageState extends State<MyHomePage> {
                             Text(
                               "PH"+filteredConfirmedCases[index].caseNo
                             ),
-                            SizedBox(height: 5.0,),
+                            Text(
+                              filteredConfirmedCases[index].age
+                            ),
+                          
                              Text(
                               filteredConfirmedCases[index].status
+                            ),
+                             Text(
+                              filteredConfirmedCases[index].gender
+                            ),
+                             Text(
+                              filteredConfirmedCases[index].dateConF
+                            ),
+                            Text(
+                              filteredConfirmedCases[index].nationality
+                            ),
+                            Text(
+                              filteredConfirmedCases[index].hospitalAdmittedTo
+                            ),
+                            Text(
+                              filteredConfirmedCases[index].hadRecentTravelAbroad
+                            ),
+                            Text(
+                              filteredConfirmedCases[index].otherInformation
                             ),
                           ],
                         ),
@@ -299,17 +410,5 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class Debouncer{
-  final int milliseconds;
-  VoidCallback action;
-  Timer _timer;
-  Debouncer({this.milliseconds});
-  run(VoidCallback action){
-    if(null != _timer){
-      _timer.cancel();
-    }
-    _timer = Timer(Duration(milliseconds: milliseconds),action);
-  }
-}
- 
+
 
